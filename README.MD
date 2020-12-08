@@ -1,0 +1,1 @@
+Также валидировать поля можно с помощью либы https://github.com/go-playground/validator

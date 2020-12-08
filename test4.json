@@ -1,0 +1,31 @@
+{
+    "byte-field": 10,
+    "string-field": "foo", 
+    "int1-field": 456,
+    "slice-field": [
+        "foo",
+        "bar"
+    ],    
+    "struct-field": {
+        "byte-field": 10,
+        "string-field": "foo", 
+        "int1-field": 456   
+    },   
+    "primitive-map-field": {
+        "foo": 1,
+        "baz": 2
+    },
+    "struct-map-field": {    
+        "foo": {
+            "byte-field": 10,
+            "string-field": "foo", 
+            "int1-field": 456
+        },
+        "bar": null,
+        "baz": {
+            "byte-field": 10,
+            "string-field": "foo", 
+            "int1-field": 456
+        }
+    }
+}

@@ -38,7 +38,7 @@ func Parce(filepath string, target interface{}) error {
 		return err
 	}
 
-	err = setDefaultFields(target)
+	err = setDefaultFields(target, m)
 	if err != nil {
 		err := fmt.Errorf("%w: %v", ErrorWhileUnmarshaling, err)
 		return err
@@ -56,33 +56,35 @@ func checkeRequiredFields(target interface{}, m interface{}) error {
 
 		switch fields.Field(i).Kind() {
 		default:
-			if strings.Contains(tagStr, "required") &&
-				!check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).IsValid() {
+			if isFieldRequered(tagStr) &&
+				isRequeredFieldNil(check, tagStr) {
 				err := fmt.Sprintf(`required field "%v" (tag "%v") is missing`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0])
 				return errors.New(err)
 			}
+
 		case reflect.Struct:
-			if strings.Contains(tagStr, "required") && fields.Field(i).IsZero() {
+			if isFieldRequered(tagStr) && fields.Field(i).IsZero() {
 				err := fmt.Sprintf(`required field "%v" (tag "%v") is missing`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0])
 				return errors.New(err)
 			}
- 
+
 			if check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).IsValid() {
 				err := checkeRequiredFields(fields.Field(i).Addr().Interface(), check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).Interface())
 				if err != nil {
 					err := fmt.Errorf(`struct "%v" (tag "%v"): %w`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0], err)
 					return err
 				}
-			} else {
-				err := checkeRequiredFields(fields.Field(i).Addr().Interface(), check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).Interface())
-				if err != nil {
-					err := fmt.Errorf(`struct "%v" (tag "%v"): %w`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0], err)
-					return err
-				}
 			}
+			// } else {
+			// 	err := checkeRequiredFields(fields.Field(i).Addr().Interface(), check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).Interface())
+			// 	if err != nil {
+			// 		err := fmt.Errorf(`struct "%v" (tag "%v"): %w`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0], err)
+			// 		return err
+			// 	}
+			// }
 
 		case reflect.Map:
-			if strings.Contains(tagStr, "required") && fields.Field(i).IsZero() {
+			if isFieldRequered(tagStr) && fields.Field(i).IsZero() {
 				err := fmt.Sprintf(`required field "%v" (tag "%v") is missing`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0])
 				return errors.New(err)
 			}
@@ -103,7 +105,7 @@ func checkeRequiredFields(target interface{}, m interface{}) error {
 				}
 			}
 		case reflect.Slice:
-			if strings.Contains(tagStr, "required") && fields.Field(i).IsZero() {
+			if isFieldRequered(tagStr) && fields.Field(i).IsZero() {
 				err := fmt.Sprintf(`required field "%v" (tag "%v") is missing`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0])
 				return errors.New(err)
 			}
@@ -123,14 +125,26 @@ func checkeRequiredFields(target interface{}, m interface{}) error {
 
 	return nil
 }
+func isFieldRequered(tagStr string) bool {
+	return strings.Contains(tagStr, "required")
+}
 
-func setDefaultFields(target interface{}) error {
+func isRequeredFieldNil(check reflect.Value, tagStr string) bool {
+	if check.IsValid() {
+		return !check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).IsValid()
+	}
+	return true
+}
+
+func setDefaultFields(target interface{}, m interface{}) error {
 	fields := reflect.ValueOf(target).Elem()
+	check := reflect.ValueOf(m)
 
 	for i := 0; i < fields.NumField(); i++ {
 		tagStr := fields.Type().Field(i).Tag.Get("default")
+		tagJSONStr := fields.Type().Field(i).Tag.Get("json")
 
-		if tagStr != "" && fields.Field(i).IsZero() {
+		if tagStr != "" && isRequeredFieldNil(check, tagJSONStr) {
 			switch fields.Field(i).Kind() {
 			case reflect.Int:
 				val, err := strconv.ParseInt(tagStr, 10, 32)
@@ -214,15 +228,23 @@ func setDefaultFields(target interface{}) error {
 
 		switch fields.Field(i).Kind() {
 		case reflect.Struct:
-			err := setDefaultFields(fields.Field(i).Addr().Interface())
-			if err != nil {
-				return err
+			if isRequeredFieldNil(check, tagJSONStr) {
+				err := setDefaultFields(fields.Field(i).Addr().Interface(), nil)
+				if err != nil {
+					return err
+				}
+			} else {
+				err := setDefaultFields(fields.Field(i).Addr().Interface(), check.MapIndex(reflect.ValueOf(strings.Split(tagJSONStr, ",")[0])).Interface())
+				if err != nil {
+					return err
+				}
 			}
+
 		case reflect.Slice:
 			for j := 0; j < fields.Field(i).Len(); j++ {
 				if (fields.Field(i).Index(j).Kind() == reflect.Struct ||
 					fields.Field(i).Index(j).Kind() == reflect.Ptr) && !fields.Field(i).Index(j).IsZero() {
-					err := setDefaultFields(fields.Field(i).Index(j).Addr().Interface())
+					err := setDefaultFields(fields.Field(i).Index(j).Addr().Interface(), reflect.ValueOf(check.MapIndex(reflect.ValueOf(strings.Split(tagJSONStr, ",")[0])).Interface()).Index(j).Interface())
 					if err != nil {
 						return err
 					}
@@ -230,12 +252,19 @@ func setDefaultFields(target interface{}) error {
 			}
 		case reflect.Map:
 			for _, key := range fields.Field(i).MapKeys() {
-				if (fields.Field(i).MapIndex(key).Kind() == reflect.Struct ||
-					fields.Field(i).MapIndex(key).Kind() == reflect.Ptr) && !fields.Field(i).MapIndex(key).IsZero() {
-					err := setDefaultFields(fields.Field(i).MapIndex(key).Interface())
-					if err != nil {
-						return err
+				if fields.Field(i).MapIndex(key).Kind() == reflect.Ptr && !fields.Field(i).MapIndex(key).IsZero() {
+					if isRequeredFieldNil(check, tagJSONStr) {
+						err := setDefaultFields(fields.Field(i).MapIndex(key).Interface(), nil)
+						if err != nil {
+							return err
+						}
+					} else {
+						err := setDefaultFields(fields.Field(i).MapIndex(key).Interface(), reflect.ValueOf(check.MapIndex(reflect.ValueOf(strings.Split(tagJSONStr, ",")[0])).Interface()).MapIndex(key).Interface())
+						if err != nil {
+							return err
+						}
 					}
+
 				}
 			}
 		}

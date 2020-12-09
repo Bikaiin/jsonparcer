@@ -52,7 +52,19 @@ func Test_checkeRequiredFields(t *testing.T) {
 				},
 				map[string]interface{}{
 					"name": "Jin",
+				},
 			},
+			false,
+		},
+		{
+			"test_1.1",
+			args{
+				&testDefaultStruct{
+					Name: "",
+				},
+				map[string]interface{}{
+					"name": "",
+				},
 			},
 			false,
 		},
@@ -77,7 +89,7 @@ func Test_checkeRequiredFields(t *testing.T) {
 					"name": "Jin",
 					"parent": map[string]interface{}{
 						"name": "pa",
-			},
+					},
 				},
 			},
 			false,
@@ -98,7 +110,7 @@ func Test_checkeRequiredFields(t *testing.T) {
 					},
 				},
 			},
-			false,
+			true,
 		},
 		{
 			"test_4",
@@ -109,7 +121,7 @@ func Test_checkeRequiredFields(t *testing.T) {
 				},
 				map[string]interface{}{
 					"name": "Jin",
-			},
+				},
 			},
 			true,
 		},
@@ -143,7 +155,7 @@ func Test_checkeRequiredFields(t *testing.T) {
 							"name": "jo",
 						},
 					},
-			},
+				},
 			},
 			false,
 		},
@@ -184,7 +196,7 @@ func Test_checkeRequiredFields(t *testing.T) {
 					"parent": []interface{}{
 						map[string]interface{}{
 							"name": "helen",
-			},
+						},
 						map[string]interface{}{
 							"name": "jo",
 						},
@@ -208,7 +220,7 @@ func Test_checkeRequiredFields(t *testing.T) {
 					"parent": []interface{}{
 						map[string]interface{}{
 							"name": "helen",
-			},
+						},
 						map[string]interface{}{
 							"age": 20,
 						},
@@ -229,7 +241,7 @@ func Test_checkeRequiredFields(t *testing.T) {
 				},
 				map[string]interface{}{
 					"name": "Jin",
-			},
+				},
 			},
 			false,
 		},
@@ -238,11 +250,7 @@ func Test_checkeRequiredFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := checkeRequiredFields(tt.args.target, tt.args.m); (err != nil) != tt.wantErr {
 				t.Errorf("checkeRequiredFields() error = %v, wantErr %v", err, tt.wantErr)
-				log.Println(tt.name, err)
-			} else {
-				log.Println(tt.name, err)
 			}
-
 		})
 	}
 }
@@ -288,6 +296,7 @@ type testStructDefaultFieldsMap struct {
 func Test_setDefaultFields(t *testing.T) {
 	type args struct {
 		target interface{}
+		m      map[string]interface{}
 	}
 	tests := []struct {
 		name    string
@@ -298,6 +307,7 @@ func Test_setDefaultFields(t *testing.T) {
 			"test_1",
 			args{
 				&testStructDefaultFields{},
+				map[string]interface{}{},
 			},
 			false,
 		},
@@ -305,6 +315,7 @@ func Test_setDefaultFields(t *testing.T) {
 			"test_2",
 			args{
 				&testStructDefaultFieldsWrongInt{},
+				map[string]interface{}{},
 			},
 			true,
 		},
@@ -312,6 +323,7 @@ func Test_setDefaultFields(t *testing.T) {
 			"test_3",
 			args{
 				&testStructDefaultFieldsWrongByte{},
+				map[string]interface{}{},
 			},
 			true,
 		},
@@ -319,6 +331,7 @@ func Test_setDefaultFields(t *testing.T) {
 			"test_4",
 			args{
 				&testStructDefaultFieldsWrongArr{},
+				map[string]interface{}{},
 			},
 			true,
 		},
@@ -326,6 +339,7 @@ func Test_setDefaultFields(t *testing.T) {
 			"test_5",
 			args{
 				&testStructDefaultFieldsWrongMap{},
+				map[string]interface{}{},
 			},
 			true,
 		},
@@ -333,6 +347,7 @@ func Test_setDefaultFields(t *testing.T) {
 			"test_6",
 			args{
 				&testStructDefaultFieldsWrongStruct{},
+				map[string]interface{}{},
 			},
 			true,
 		},
@@ -340,6 +355,7 @@ func Test_setDefaultFields(t *testing.T) {
 			"test_7",
 			args{
 				&testStructDefaultFieldsStruct{},
+				map[string]interface{}{},
 			},
 			false,
 		},
@@ -352,15 +368,17 @@ func Test_setDefaultFields(t *testing.T) {
 						"bar": &testStructDefaultFields{},
 					},
 				},
+				map[string]interface{}{},
 			},
 			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := setDefaultFields(tt.args.target); (err != nil) != tt.wantErr {
+			if err := setDefaultFields(tt.args.target, tt.args.m); (err != nil) != tt.wantErr {
 				t.Errorf("setDefaultFields() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
 		})
 	}
 }
@@ -449,6 +467,7 @@ func TestParce(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Parce() error = %v, wantErr %v", err, tt.wantErr)
 			}
+			log.Println(tt.args.target)
 		})
 	}
 }

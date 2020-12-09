@@ -1,4 +1,21 @@
 {
+    "byte-field": 10,
+    "string-field": "foo", 
+    "int1-field": 0,
+    "int2-field": -789,
+    "slice-field": [
+        "foo",
+        "bar"
+    ],    
+    "struct-field": {
+        "byte-field": 10,
+        "string-field": "foo", 
+        "int1-field": 456   
+    },   
+    "primitive-map-field": {
+        "foo": 1,
+        "baz": 2
+    },
     "struct-map-field": {    
         "foo": {
             "byte-field": 10,

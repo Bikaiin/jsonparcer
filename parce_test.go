@@ -1,6 +1,7 @@
 package testparcer
 
 import (
+	"log"
 	"testing"
 )
 
@@ -36,6 +37,7 @@ type testStructWithNestedMap struct {
 func Test_checkeRequiredFields(t *testing.T) {
 	type args struct {
 		target interface{}
+		m      interface{}
 	}
 	tests := []struct {
 		name    string
@@ -48,6 +50,9 @@ func Test_checkeRequiredFields(t *testing.T) {
 				&testDefaultStruct{
 					Name: "Jin",
 				},
+				map[string]interface{}{
+					"name": "Jin",
+			},
 			},
 			false,
 		},
@@ -55,6 +60,7 @@ func Test_checkeRequiredFields(t *testing.T) {
 			"test_2",
 			args{
 				&testDefaultStruct{},
+				map[string]interface{}{},
 			},
 			true,
 		},
@@ -67,6 +73,30 @@ func Test_checkeRequiredFields(t *testing.T) {
 						Name: "pa",
 					},
 				},
+				map[string]interface{}{
+					"name": "Jin",
+					"parent": map[string]interface{}{
+						"name": "pa",
+			},
+				},
+			},
+			false,
+		},
+		{
+			"test_3.1",
+			args{
+				&testStructWithNested{
+					Name: "jin",
+					Parent: testDefaultStruct{
+						Age: 200,
+					},
+				},
+				map[string]interface{}{
+					"name": "Jin",
+					"parent": map[string]interface{}{
+						"age": 200,
+					},
+				},
 			},
 			false,
 		},
@@ -77,6 +107,9 @@ func Test_checkeRequiredFields(t *testing.T) {
 					Name:   "jin",
 					Parent: testDefaultStruct{},
 				},
+				map[string]interface{}{
+					"name": "Jin",
+			},
 			},
 			true,
 		},
@@ -86,6 +119,7 @@ func Test_checkeRequiredFields(t *testing.T) {
 				&testStructWithNested{
 					Name: "jin",
 				},
+				map[string]interface{}{},
 			},
 			true,
 		},
@@ -99,6 +133,17 @@ func Test_checkeRequiredFields(t *testing.T) {
 						"pa":  &testDefaultStruct{Name: "jo"},
 					},
 				},
+				map[string]interface{}{
+					"name": "jin",
+					"parent": map[string]interface{}{
+						"mam": map[string]interface{}{
+							"name": "helen",
+						},
+						"pa": map[string]interface{}{
+							"name": "jo",
+						},
+					},
+			},
 			},
 			false,
 		},
@@ -110,6 +155,15 @@ func Test_checkeRequiredFields(t *testing.T) {
 					Parent: map[string]*testDefaultStruct{
 						"mam": &testDefaultStruct{Name: "helen"},
 						"pa":  &testDefaultStruct{},
+					},
+				},
+				map[string]interface{}{
+					"name": "Jin",
+					"parent": map[string]interface{}{
+						"mam": map[string]interface{}{
+							"name": "helen",
+						},
+						"pa": map[string]interface{}{},
 					},
 				},
 			},
@@ -125,6 +179,17 @@ func Test_checkeRequiredFields(t *testing.T) {
 						testDefaultStruct{Name: "jo"},
 					},
 				},
+				map[string]interface{}{
+					"name": "Jin",
+					"parent": []interface{}{
+						map[string]interface{}{
+							"name": "helen",
+			},
+						map[string]interface{}{
+							"name": "jo",
+						},
+					},
+				},
 			},
 			false,
 		},
@@ -136,6 +201,17 @@ func Test_checkeRequiredFields(t *testing.T) {
 					Parent: []testDefaultStruct{
 						testDefaultStruct{Name: "helen"},
 						testDefaultStruct{Age: 20},
+					},
+				},
+				map[string]interface{}{
+					"name": "Jin",
+					"parent": []interface{}{
+						map[string]interface{}{
+							"name": "helen",
+			},
+						map[string]interface{}{
+							"age": 20,
+						},
 					},
 				},
 			},
@@ -151,15 +227,22 @@ func Test_checkeRequiredFields(t *testing.T) {
 						"pa":  "jo",
 					},
 				},
+				map[string]interface{}{
+					"name": "Jin",
+			},
 			},
 			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := checkeRequiredFields(tt.args.target); (err != nil) != tt.wantErr {
+			if err := checkeRequiredFields(tt.args.target, tt.args.m); (err != nil) != tt.wantErr {
 				t.Errorf("checkeRequiredFields() error = %v, wantErr %v", err, tt.wantErr)
+				log.Println(tt.name, err)
+			} else {
+				log.Println(tt.name, err)
 			}
+
 		})
 	}
 }
@@ -305,6 +388,10 @@ type anotherTestStruct2 struct {
 	F3 int    `json:"int1-field" default:"123"`
 }
 
+type anotherTestStruct3 struct {
+	F5 []anotherTestStruct1 `json:"slice-field,required"`
+}
+
 func TestParce(t *testing.T) {
 	type args struct {
 		filepath string
@@ -346,6 +433,14 @@ func TestParce(t *testing.T) {
 				target:   &testStruct{},
 			},
 			true,
+		},
+		{
+			"test_5",
+			args{
+				filepath: "test5.json",
+				target:   &anotherTestStruct3{},
+			},
+			false,
 		},
 	}
 	for _, tt := range tests {

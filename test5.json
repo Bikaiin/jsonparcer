@@ -1,15 +1,19 @@
 {
-    "struct-map-field": {    
-        "foo": {
+    "slice-field": [
+        {
             "byte-field": 10,
             "string-field": "foo", 
             "int1-field": 456
         },
-        "bar": null,
-        "baz": {
+        {
+            "byte-field": 10,
+            "string-field": "foo", 
+            "int1-field": 456
+        },
+        {
             "byte-field": 10,
             "string-field": "foo", 
             "int1-field": 456
         }
-    }
+    ]
 }

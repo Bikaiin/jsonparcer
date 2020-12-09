@@ -20,13 +20,19 @@ var (
 
 // Parce принимает путь файла и с труктуру в которю распарсит json, возвращает ошибку
 func Parce(filepath string, target interface{}) error {
+	m := make(map[string]interface{})
 	err := readJSON(filepath, target)
 	if err != nil {
 		err := fmt.Errorf("%w: %v", ErrorWhileReadingFile, err)
 		return err
 	}
+	err = readJSON(filepath, &m)
+	if err != nil {
+		err := fmt.Errorf("%w: %v", ErrorWhileReadingFile, err)
+		return err
+	}
 
-	err = checkeRequiredFields(target)
+	err = checkeRequiredFields(target, m)
 	if err != nil {
 		err := fmt.Errorf("%w: %v", ErrorWhileChekingRequired, err)
 		return err
@@ -41,39 +47,73 @@ func Parce(filepath string, target interface{}) error {
 	return nil
 }
 
-func checkeRequiredFields(target interface{}) error {
+func checkeRequiredFields(target interface{}, m interface{}) error {
 	fields := reflect.ValueOf(target).Elem()
+	check := reflect.ValueOf(m)
 
 	for i := 0; i < fields.NumField(); i++ {
 		tagStr := fields.Type().Field(i).Tag.Get("json")
 
-		if strings.Contains(tagStr, "required") && fields.Field(i).IsZero() {
-			err := fmt.Sprintf(`required field "%v" (tag "%v") is missing`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0])
-			return errors.New(err)
-		}
-
 		switch fields.Field(i).Kind() {
-		case reflect.Struct:
-			err := checkeRequiredFields(fields.Field(i).Addr().Interface())
-			if err != nil {
-				return err
+		default:
+			if strings.Contains(tagStr, "required") &&
+				!check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).IsValid() {
+				err := fmt.Sprintf(`required field "%v" (tag "%v") is missing`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0])
+				return errors.New(err)
 			}
+		case reflect.Struct:
+			if strings.Contains(tagStr, "required") && fields.Field(i).IsZero() {
+				err := fmt.Sprintf(`required field "%v" (tag "%v") is missing`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0])
+				return errors.New(err)
+			}
+ 
+			if check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).IsValid() {
+				err := checkeRequiredFields(fields.Field(i).Addr().Interface(), check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).Interface())
+				if err != nil {
+					err := fmt.Errorf(`struct "%v" (tag "%v"): %w`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0], err)
+					return err
+				}
+			} else {
+				err := checkeRequiredFields(fields.Field(i).Addr().Interface(), check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).Interface())
+				if err != nil {
+					err := fmt.Errorf(`struct "%v" (tag "%v"): %w`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0], err)
+					return err
+				}
+			}
+
 		case reflect.Map:
+			if strings.Contains(tagStr, "required") && fields.Field(i).IsZero() {
+				err := fmt.Sprintf(`required field "%v" (tag "%v") is missing`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0])
+				return errors.New(err)
+			}
+
 			for _, key := range fields.Field(i).MapKeys() {
-				if (fields.Field(i).MapIndex(key).Kind() == reflect.Struct ||
-					fields.Field(i).MapIndex(key).Kind() == reflect.Ptr) && !fields.Field(i).MapIndex(key).IsZero() {
-					err := checkeRequiredFields(fields.Field(i).MapIndex(key).Interface())
-					if err != nil {
-						return err
+				if !fields.Field(i).MapIndex(key).IsZero() {
+					switch fields.Field(i).MapIndex(key).Kind() {
+					case reflect.Struct:
+						err := fmt.Sprintf(`unaddressable field "%v" (tag "%v") must be pointer`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0])
+						return errors.New(err)
+					case reflect.Ptr:
+						err := checkeRequiredFields(fields.Field(i).MapIndex(key).Interface(), reflect.ValueOf(check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).Interface()).MapIndex(key).Interface())
+						if err != nil {
+							err := fmt.Errorf(`map "%v" (tag "%v") key "%v" : %w`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0], key.Interface(), err)
+							return err
+						}
 					}
 				}
 			}
 		case reflect.Slice:
+			if strings.Contains(tagStr, "required") && fields.Field(i).IsZero() {
+				err := fmt.Sprintf(`required field "%v" (tag "%v") is missing`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0])
+				return errors.New(err)
+			}
+
 			for j := 0; j < fields.Field(i).Len(); j++ {
 				if (fields.Field(i).Index(j).Kind() == reflect.Struct ||
 					fields.Field(i).Index(j).Kind() == reflect.Ptr) && !fields.Field(i).Index(j).IsZero() {
-					err := checkeRequiredFields(fields.Field(i).Index(j).Addr().Interface())
+					err := checkeRequiredFields(fields.Field(i).Index(j).Addr().Interface(), reflect.ValueOf(check.MapIndex(reflect.ValueOf(strings.Split(tagStr, ",")[0])).Interface()).Index(j).Interface())
 					if err != nil {
+						err := fmt.Errorf(`slice "%v" (tag "%v") index "%v" : %w`, fields.Type().Field(i).Name, strings.Split(tagStr, ",")[0], j, err)
 						return err
 					}
 				}

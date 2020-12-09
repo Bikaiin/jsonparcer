@@ -1,10 +1,11 @@
 package testparcer
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -19,21 +20,15 @@ var (
 
 // Parce принимает путь файла и с труктуру в которю распарсит json, возвращает ошибку
 func Parce(filepath string, target interface{}) error {
-	bts, err := readJSON(filepath)
+	err := readJSON(filepath, target)
 	if err != nil {
 		err := fmt.Errorf("%w: %v", ErrorWhileReadingFile, err)
 		return err
 	}
 
-	err = json.Unmarshal(bts, target)
-	if err != nil {
-		err := fmt.Errorf("%w: %v", ErrorWhileUnmarshaling, err)
-		return err
-	}
-
 	err = checkeRequiredFields(target)
 	if err != nil {
-		err := fmt.Errorf("%w: %v", ErrorWhileUnmarshaling, err)
+		err := fmt.Errorf("%w: %v", ErrorWhileChekingRequired, err)
 		return err
 	}
 
@@ -210,11 +205,20 @@ func setDefaultFields(target interface{}) error {
 	return nil
 }
 
-func readJSON(filepath string) ([]byte, error) {
-	bts, err := ioutil.ReadFile(filepath)
+func readJSON(filepath string, target interface{}) error {
+	f, err := os.Open(filepath)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	defer f.Close()
+
+	b := bufio.NewReader(f)
+	d := json.NewDecoder(b)
+	d.DisallowUnknownFields()
+	err = d.Decode(target)
+	if err != nil {
+		return err
 	}
 
-	return bts, nil
+	return nil
 }

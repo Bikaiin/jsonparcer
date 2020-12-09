@@ -357,3 +357,33 @@ func TestParce(t *testing.T) {
 		})
 	}
 }
+
+func Test_readJSON(t *testing.T) {
+	type args struct {
+		filepath string
+		target   interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			"test_3",
+			args{
+				filepath: "test3.json",
+				target:   &testStruct{},
+			},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := readJSON(tt.args.filepath, tt.args.target)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("readJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}

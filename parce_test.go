@@ -1,7 +1,6 @@
 package testparcer
 
 import (
-	"log"
 	"testing"
 )
 
@@ -26,6 +25,12 @@ type testStructWithNestedArray struct {
 	Name   string              `json:"name,required"`
 	Age    int                 `json:"age" default:"18"`
 	Parent []testDefaultStruct `json:"parent,required"`
+}
+
+type testStructWithNestedArray1 struct {
+	Name   string               `json:"name,required"`
+	Age    int                  `json:"age" default:"18"`
+	Parent []*testDefaultStruct `json:"parent,required"`
 }
 
 type testStructWithNestedMap struct {
@@ -230,6 +235,54 @@ func Test_checkeRequiredFields(t *testing.T) {
 			true,
 		},
 		{
+			"test_8.1",
+			args{
+				&testStructWithNestedArray1{
+					Name: "jin",
+					Parent: []*testDefaultStruct{
+						&testDefaultStruct{Name: "helen"},
+						&testDefaultStruct{Name: "jo"},
+					},
+				},
+				map[string]interface{}{
+					"name": "Jin",
+					"parent": []interface{}{
+						map[string]interface{}{
+							"name": "helen",
+						},
+						map[string]interface{}{
+							"name": "jo",
+						},
+					},
+				},
+			},
+			false,
+		},
+		{
+			"test_9.1",
+			args{
+				&testStructWithNestedArray1{
+					Name: "jin",
+					Parent: []*testDefaultStruct{
+						&testDefaultStruct{Name: "helen"},
+						&testDefaultStruct{Age: 20},
+					},
+				},
+				map[string]interface{}{
+					"name": "Jin",
+					"parent": []interface{}{
+						map[string]interface{}{
+							"name": "helen",
+						},
+						map[string]interface{}{
+							"age": 20,
+						},
+					},
+				},
+			},
+			true,
+		},
+		{
 			"test_10",
 			args{
 				&testStructWithNestedMap{
@@ -410,6 +463,10 @@ type anotherTestStruct3 struct {
 	F5 []anotherTestStruct1 `json:"slice-field,required"`
 }
 
+type anotherTestStruct3_1 struct {
+	F5 []*anotherTestStruct1 `json:"slice-field,required"`
+}
+
 func TestParce(t *testing.T) {
 	type args struct {
 		filepath string
@@ -460,6 +517,14 @@ func TestParce(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"test_5.1",
+			args{
+				filepath: "test5.json",
+				target:   &anotherTestStruct3_1{},
+			},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -467,7 +532,6 @@ func TestParce(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Parce() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			log.Println(tt.args.target)
 		})
 	}
 }
